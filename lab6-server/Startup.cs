@@ -21,6 +21,7 @@ using Lab6.ViewModels;
 using Lab6.Validators;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Lab6.Services;
 
 namespace Lab6
 {
@@ -100,6 +101,8 @@ namespace Lab6
 
 			services.AddTransient<IValidator<MovieViewModel>, MovieValidator>();
 			services.AddTransient<IValidator<CommentViewModel>, CommentValidator>();
+			services.AddTransient<IAuthManagementService, AuthManagementService>();
+			services.AddTransient<IMovieManagementService, MovieManagementService>();
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

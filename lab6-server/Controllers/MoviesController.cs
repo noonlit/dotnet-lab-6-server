@@ -10,6 +10,7 @@ using Lab6.Models;
 using Microsoft.AspNetCore.Authorization;
 using AutoMapper;
 using Lab6.ViewModels;
+using Lab6.Services;
 
 namespace Lab6.Controllers
 {
@@ -20,11 +21,13 @@ namespace Lab6.Controllers
 	{
 		private readonly ApplicationDbContext _context;
 		private readonly IMapper _mapper;
+		private readonly IMovieManagementService _movieService;
 
-		public MoviesController(ApplicationDbContext context, IMapper mapper)
+		public MoviesController(ApplicationDbContext context, IMapper mapper, IMovieManagementService movieService)
 		{
 			_context = context;
 			_mapper = mapper;
+			_movieService = movieService;
 		}
 
 		/// <summary>
@@ -51,26 +54,18 @@ namespace Lab6.Controllers
 		}
 
 		/// <summary>
-		/// Retrieves a list of movies filtered by the interval when they were added, ordered descendingly by release year.
+		/// Retrieves a list of movies.
 		/// </summary>
 		/// <remarks>
 		/// Sample request:
-		/// GET /api/Movies?startDate=1997-12-31T23:59:00&endDate=2002-01-01
+		/// GET /api/Movies
 		/// </remarks>
-		/// <param name="startDate"></param>
-		/// <param name="endDate"></param>
-		/// <response code="200">The filtered movies.</response>
+		/// <response code="200">The movies.</response>
 		[HttpGet]
-
-		public async Task<ActionResult<IEnumerable<MovieViewModel>>> GetMovies(string? startDate, string? endDate)
+		public async Task<ActionResult<IEnumerable<MovieViewModel>>> GetMovies()
 		{
-			// the first movie ever was made in 1888, so we can use this as a default first value
-			var startDateDt = startDate == null ? DateTime.Parse("1888-01-01") : DateTime.Parse(startDate);
-			var endDateDt = endDate == null ? DateTime.Now : DateTime.Parse(endDate);
-
-			var movies = await _context.Movies
-				.Where(m => m.AddedAt >= startDateDt && m.AddedAt <= endDateDt)
-				.OrderByDescending(m => m.ReleaseYear).ToListAsync();
+			var moviesResponse = await _movieService.GetMovies();
+			var movies = moviesResponse.ResponseOk;
 
 			return _mapper.Map<List<Movie>, List<MovieViewModel>>(movies);
 		}
