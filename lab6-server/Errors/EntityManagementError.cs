@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Lab6.Errors
 {
-	public class ModelError
+	public class EntityManagementError
 	{
 		public string Code { get; set; }
 

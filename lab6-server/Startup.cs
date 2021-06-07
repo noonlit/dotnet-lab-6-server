@@ -103,6 +103,7 @@ namespace Lab6
 			services.AddTransient<IValidator<CommentViewModel>, CommentValidator>();
 			services.AddTransient<IAuthManagementService, AuthManagementService>();
 			services.AddTransient<IMovieManagementService, MovieManagementService>();
+			services.AddTransient<IFavouritesManagementService, FavouritesManagementService>();
 		}
 
 		// This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Lab6.Data;
 using Lab6.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -19,13 +17,11 @@ namespace Lab6.Controllers
 	[Produces("application/json")]
 	public class MoviesController : ControllerBase
 	{
-		private readonly ApplicationDbContext _context;
 		private readonly IMapper _mapper;
 		private readonly IMovieManagementService _movieService;
 
-		public MoviesController(ApplicationDbContext context, IMapper mapper, IMovieManagementService movieService)
+		public MoviesController(IMapper mapper, IMovieManagementService movieService)
 		{
-			_context = context;
 			_mapper = mapper;
 			_movieService = movieService;
 		}
@@ -42,13 +38,10 @@ namespace Lab6.Controllers
 		/// <response code="200">The filtered movies.</response>
 		[HttpGet]
 		[Route("filter/{startDate}_{endDate}")]
-		public ActionResult<IEnumerable<MovieViewModel>> FilterMovies(string startDate, string endDate)
+		public async Task<ActionResult<IEnumerable<MovieViewModel>>> GetFilteredMovies(string startDate, string endDate)
 		{
-			var startDateDt = DateTime.Parse(startDate);
-			var endDateDt   = DateTime.Parse(endDate);
-
-			var movies = _context.Movies.Where(m => m.AddedAt >= startDateDt && m.AddedAt <= endDateDt)
-				.OrderByDescending(m => m.ReleaseYear).ToList();
+			var moviesResponse = await _movieService.GetFilteredMovies(startDate, endDate);
+			var movies = moviesResponse.ResponseOk;
 
 			return _mapper.Map<List<Movie>, List<MovieViewModel>>(movies);
 		}
@@ -85,13 +78,21 @@ namespace Lab6.Controllers
 		[HttpGet("{id}/Comments")]
 		public async Task<ActionResult<MovieWithCommentsViewModel>> GetCommentsForMovieAsync(int id)
 		{
-			if (!MovieExists(id))
+			if (!_movieService.MovieExists(id))
 			{
 				return NotFound();
 			}
 
-			var movie = await _context.Movies.Where(m => m.Id == id).FirstOrDefaultAsync();
-			var comments = await _context.Comments.Where(c => c.MovieId == id).ToListAsync();
+			var movieResponse = await _movieService.GetMovie(id);
+			var movie = movieResponse.ResponseOk;
+
+			if (movie == null)
+			{
+				return NotFound();
+			}
+
+			var commentsResponse = await _movieService.GetCommentsForMovie(id);
+			var comments = commentsResponse.ResponseOk;
 
 			var result = _mapper.Map<MovieWithCommentsViewModel>(movie);
 			result.Comments = _mapper.Map<List<Comment>, List<CommentViewModel>>(comments);
@@ -114,7 +115,8 @@ namespace Lab6.Controllers
 		[HttpGet("{id}")]
 		public async Task<ActionResult<MovieViewModel>> GetMovie(int id)
 		{
-			var movie = await _context.Movies.FindAsync(id);
+			var movieResponse = await _movieService.GetMovie(id);
+			var movie = movieResponse.ResponseOk;
 
 			if (movie == null)
 			{
@@ -162,25 +164,19 @@ namespace Lab6.Controllers
 				return BadRequest();
 			}
 
-			_context.Entry(_mapper.Map<Movie>(movie)).State = EntityState.Modified;
+			var movieResponse = await _movieService.UpdateMovie(_mapper.Map<Movie>(movie));
 
-			try
+			if (movieResponse.ResponseError == null)
 			{
-				await _context.SaveChangesAsync();
-			}
-			catch (DbUpdateConcurrencyException)
-			{
-				if (!MovieExists(id))
-				{
-					return NotFound();
-				}
-				else
-				{
-					throw;
-				}
+				return NoContent();
 			}
 
-			return NoContent();
+			if (!_movieService.MovieExists(id))
+			{
+				return NotFound();
+			}
+
+			return StatusCode(500);
 		}
 
 		/// <summary>
@@ -213,25 +209,24 @@ namespace Lab6.Controllers
 				return BadRequest();
 			}
 
-			_context.Entry(_mapper.Map<Comment>(comment)).State = EntityState.Modified;
-
-			try
+			if (!_movieService.MovieExists(comment.MovieId))
 			{
-				await _context.SaveChangesAsync();
-			}
-			catch (DbUpdateConcurrencyException)
-			{
-				if (!CommentExists(commentId))
-				{
-					return NotFound();
-				}
-				else
-				{
-					throw;
-				}
+				return NotFound();
 			}
 
-			return NoContent();
+			var commentResponse = await _movieService.UpdateComment(_mapper.Map<Comment>(comment));
+
+			if (commentResponse.ResponseError == null)
+			{
+				return NoContent();
+			}
+
+			if (!_movieService.CommentExists(commentId))
+			{
+				return NotFound();
+			}
+
+			return StatusCode(500);
 		}
 
 		// POST: api/Movies
@@ -264,10 +259,14 @@ namespace Lab6.Controllers
 		[Authorize(AuthenticationSchemes = "Identity.Application,Bearer")]
 		public async Task<ActionResult<Movie>> PostMovie(MovieViewModel movie)
 		{
-			_context.Movies.Add(_mapper.Map<Movie>(movie));
-			await _context.SaveChangesAsync();
+			var movieResponse = await _movieService.CreateMovie(_mapper.Map<Movie>(movie));
 
-			return CreatedAtAction("GetMovie", new { id = movie.Id }, movie);
+			if (movieResponse.ResponseError == null)
+			{
+				return CreatedAtAction("GetMovie", new { id = movie.Id }, movie);
+			}
+
+			return StatusCode(500);
 		}
 
 		/// <summary>
@@ -291,22 +290,16 @@ namespace Lab6.Controllers
 		[ProducesResponseType(StatusCodes.Status201Created)]
 		[ProducesResponseType(StatusCodes.Status400BadRequest)]
 		[HttpPost("{id}/Comments")]
-		public IActionResult PostCommentForMovie(int id, CommentViewModel comment)
+		public async Task<IActionResult> PostCommentForMovie(int id, CommentViewModel comment)
 		{
-			var movie = _context.Movies
-				.Where(m => m.Id == id)
-				.Include(m => m.Comments).FirstOrDefault();
+			var commentResponse = await _movieService.AddCommentToMovie(id, _mapper.Map<Comment>(comment));
 
-			if (movie == null)
+			if (commentResponse.ResponseError == null)
 			{
-				return NotFound();
+				return Ok();
 			}
 
-			movie.Comments.Add(_mapper.Map<Comment>(comment));
-			_context.Entry(movie).State = EntityState.Modified;
-			_context.SaveChanges();
-
-			return Ok();
+			return StatusCode(500);
 		}
 
 		// DELETE: api/Movies/5
@@ -328,16 +321,20 @@ namespace Lab6.Controllers
 		[Authorize(AuthenticationSchemes = "Identity.Application,Bearer")]
 		public async Task<IActionResult> DeleteMovie(int id)
 		{
-			var movie = await _context.Movies.FindAsync(id);
-			if (movie == null)
+			if (!_movieService.MovieExists(id))
 			{
 				return NotFound();
 			}
 
-			_context.Movies.Remove(movie);
-			await _context.SaveChangesAsync();
+			var result = await _movieService.DeleteMovie(id);
 
-			return NoContent();
+			if (result.ResponseError == null)
+			{
+				return NoContent();
+			}
+
+
+			return StatusCode(500);
 		}
 
 
@@ -360,26 +357,20 @@ namespace Lab6.Controllers
 		[Authorize(AuthenticationSchemes = "Identity.Application,Bearer")]
 		public async Task<IActionResult> DeleteComment(int commentId)
 		{
-			var comment = await _context.Comments.FindAsync(commentId);
-			if (comment == null)
+			if (!_movieService.CommentExists(commentId))
 			{
 				return NotFound();
 			}
 
-			_context.Comments.Remove(comment);
-			await _context.SaveChangesAsync();
+			var result = await _movieService.DeleteComment(commentId);
 
-			return NoContent();
-		}
+			if (result.ResponseError == null)
+			{
+				return NoContent();
+			}
 
-		private bool MovieExists(int id)
-		{
-			return _context.Movies.Any(e => e.Id == id);
-		}
 
-		private bool CommentExists(int id)
-		{
-			return _context.Comments.Any(e => e.Id == id);
+			return StatusCode(500);
 		}
 	}
 }
