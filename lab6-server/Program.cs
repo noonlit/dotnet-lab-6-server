@@ -27,10 +27,14 @@ namespace Lab6
                 {
                     var context = services.GetRequiredService<ApplicationDbContext>();
                     // context.Database.Migrate(); // apply all migrations
-                    SeedMovies.Seed(context, 1000); // Insert default data
-                    SeedComments.Seed(context, 1000);
-                    SeedUsers.Seed(context, services.GetRequiredService<UserManager<ApplicationUser>>(), 1000);
-                    SeedFavourites.Seed(context, 1000);
+
+                    if (context.Movies.Count() < 1000)
+                    {
+                        SeedMovies.Seed(context, 1000); // Insert default data
+                        SeedComments.Seed(context, 1000);
+                        SeedUsers.Seed(context, services.GetRequiredService<UserManager<ApplicationUser>>(), 1000);
+                        SeedFavourites.Seed(context, 1000);
+                    }
                 }
                 catch (Exception ex)
                 {
