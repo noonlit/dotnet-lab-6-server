@@ -27,6 +27,7 @@ namespace Lab6.Data
 
                 user.PasswordHash = userManager.PasswordHasher.HashPassword(user, "P@ssw0rd1!");
                 context.ApplicationUsers.Add(user);
+                context.SaveChanges();
             }
         }
 
