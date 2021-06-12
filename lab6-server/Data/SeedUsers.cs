@@ -12,6 +12,7 @@ namespace Lab6.Data
         private static Random random = new Random();
         public static void Seed(ApplicationDbContext context, UserManager<ApplicationUser> userManager, int count)
         {
+
             context.Database.EnsureCreated();
 
             for (int i = 0; i < count; ++i)
@@ -21,10 +22,11 @@ namespace Lab6.Data
                 {
 
                     Email = email,
-                    UserName = email
+                    UserName = email,
                 };
 
-                userManager.CreateAsync(user, "P@ssw0rd1!");
+                user.PasswordHash = userManager.PasswordHasher.HashPassword(user, "P@ssw0rd1!");
+                context.ApplicationUsers.Add(user);
             }
         }
 

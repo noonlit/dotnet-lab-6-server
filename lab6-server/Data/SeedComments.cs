@@ -11,16 +11,14 @@ namespace Lab6.Data
         private static string Characters = "abcdefghijklmnopqrstuvwxyz123456890";
         private static Random random = new Random();
 
-        public static void Seed(IServiceProvider serviceProvider, int count)
+        public static void Seed(ApplicationDbContext context, int count)
         {
-            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             context.Database.EnsureCreated();
             var moviesCount = context.Movies.Count();
 
             for (int i = 0; i < count; ++i)
             {
-                //var movie = context.Movies.Skip(random.Next(1, moviesCount)).Take(1).First();
-                var movie = context.Movies.Where(m => m.Id > 0).FirstOrDefault();
+                var movie = context.Movies.Skip(random.Next(1, moviesCount)).Take(1).First();
 
                 var comment = new Models.Comment
                 {
