@@ -10,10 +10,8 @@ namespace Lab6.Data
     {
         private static string Characters = "abcdefghijklmnopqrstuvwxyz123456890";
         private static Random random = new Random();
-        public static void Seed(IServiceProvider serviceProvider, int count)
+        public static void Seed(ApplicationDbContext context, UserManager<ApplicationUser> userManager, int count)
         {
-            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             context.Database.EnsureCreated();
 
             for (int i = 0; i < count; ++i)

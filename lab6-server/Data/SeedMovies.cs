@@ -10,9 +10,8 @@ namespace Lab6.Data
         private static string Characters = "abcdefghijklmnopqrstuvwxyz";
         private static Random random = new Random();
 
-        public static void Seed(IServiceProvider serviceProvider, int count)
+        public static void Seed(ApplicationDbContext context, int count)
         {
-            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             context.Database.EnsureCreated();
 
             var movies = new List<Movie>();
