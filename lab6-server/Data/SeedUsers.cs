@@ -1,0 +1,45 @@
+﻿using Lab6.Models;
+using Lab6.Services;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+
+namespace Lab6.Data
+{
+    public class SeedUsers
+    {
+        private static string Characters = "abcdefghijklmnopqrstuvwxyz123456890";
+        private static Random random = new Random();
+        public static void Seed(IServiceProvider serviceProvider, int count)
+        {
+            var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+            context.Database.EnsureCreated();
+
+            for (int i = 0; i < count; ++i)
+            {
+                var email = generateRandomString(3, 10) + "@" + generateRandomString(2, 3);
+                var user = new ApplicationUser
+                {
+
+                    Email = email,
+                    UserName = email
+                };
+
+                userManager.CreateAsync(user, "P@ssw0rd1!");
+            }
+        }
+
+        private static string generateRandomString(int min, int max)
+        {
+            string s = "";
+
+            for (int j = 0; j < random.Next(min, max); ++j)
+            {
+                s += Characters[random.Next(Characters.Length)];
+            }
+
+            return s;
+        }
+    }
+}
